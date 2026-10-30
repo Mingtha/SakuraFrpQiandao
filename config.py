@@ -30,6 +30,7 @@ class Config:
     base_url: str
     api_key: str
     model: str
+    ai_prompt: str
     chrome_binary_path: Optional[str] = None
     max_retries: int = 10
     image_as_base64: bool = False
@@ -37,8 +38,9 @@ class Config:
     @classmethod
     def from_env(cls) -> 'Config':
         """从环境变量加载配置"""
-        def get_env(key: str, required: bool = True) -> str:
-            value = os.environ.get(key, "").split('\n')[0].strip()
+        def get_env(key: str, required: bool = True, multiline: bool = False) -> str:
+            raw = os.environ.get(key, "")
+            value = raw.strip() if multiline else raw.split('\n')[0].strip()
             if required and not value:
                 raise ValueError(f"环境变量 {key} 未设置或为空")
             return value
@@ -55,6 +57,7 @@ class Config:
             base_url=get_env("BASE_URL"),
             api_key=get_env("API_KEY"),
             model=get_env("MODEL"),
+            ai_prompt=get_env("AI_PROMPT", multiline=True),
             chrome_binary_path=get_env("CHROME_BINARY_PATH", required=False),
             max_retries=int(get_env("MAX_RETRIES", required=False) or 10),
             image_as_base64=get_bool_env("IMAGE_AS_BASE64", default=False)

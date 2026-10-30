@@ -62,8 +62,8 @@ class BarkTests(unittest.TestCase):
         self.assertEqual(req.full_url, "https://notify.example/bark/test-device")
         self.assertEqual(req.get_method(), "POST")
         payload = json.loads(req.data)
-        self.assertEqual(payload["title"], "SakuraFrp 签到成功")
-        self.assertIn("北京时间", payload["body"])
+        self.assertEqual(payload["title"], "SakuraFrp")
+        self.assertEqual(payload["body"], "签到成功")
         self.assertEqual(payload["url"], "https://github.com/example/checkin/actions/runs/123")
         self.assertNotIn("device_key", payload)
         self.assertTrue(payload["icon"].endswith("/1f338.png"))
@@ -80,7 +80,10 @@ class BarkTests(unittest.TestCase):
         os.environ["BARK_URL"] = "https://api.day.app/test-device"
         with patch("send_bark.urlopen", return_value=self.response()) as request:
             self.assertTrue(send_bark.send_bark(self.result))
-        self.assertEqual(json.loads(request.call_args.args[0].data)["title"], "SakuraFrp 签到失败")
+        payload = json.loads(request.call_args.args[0].data)
+        self.assertEqual(payload["title"], "SakuraFrp")
+        self.assertEqual(payload["body"], "签到失败 · 点击查看日志")
+        self.assertNotIn("\n", payload["body"])
 
     def test_transient_errors_retry_then_succeed(self):
         os.environ["BARK_URL"] = "https://api.day.app/test-device"

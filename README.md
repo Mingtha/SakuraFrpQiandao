@@ -40,6 +40,8 @@ SAKURAFRP_PASS=your_password
 BASE_URL=https://api.example.com/v1
 API_KEY=your_api_key
 MODEL=your_model_name
+# 必填：可使用双引号包裹多行提示词
+AI_PROMPT="填写你自己的完整提示词"
 
 MAX_RETRIES=10
 HEADLESS=false
@@ -79,6 +81,18 @@ python main.py
 | `API_KEY` | API 密钥 |
 | `MODEL` | 多模态模型名称 |
 
+### 自定义 AI 提示词（必填）
+
+打开仓库 `Settings → Secrets and variables → Actions → Variables → New repository variable`，新增或编辑
+`AI_PROMPT`，将完整提示词直接粘贴到 Value 中，无需修改代码，也无需添加引号。
+这是必填的 Repository variable，不是 Secret；账号密码和 API Key 仍放在 Secrets。
+多行内容会完整保留；未填写或只包含空白时，程序会在启动浏览器前报配置错误并停止。
+项目不再内置默认提示词，也不会拼接其他说明。
+
+提示词的输出约定须与现有解析逻辑一致：返回 JSON 对象，字符串键 `"1"` 至 `"9"`
+表示各格物品名称，`"10"` 表示参考图名称，所有值为字符串；匹配使用名称完全相等。
+配置提示词不会改变模型服务本身的使用限制。
+
 邮件通知为可选配置：
 
 | 名称 | 说明 |
@@ -105,7 +119,8 @@ Actions 使用 GitHub runner 自带 Chrome，并执行 `python -m playwright ins
 
 默认樱花图标由 [Twemoji](https://github.com/twitter/twemoji) 提供，图片许可为 [CC-BY 4.0](https://creativecommons.org/licenses/by/4.0/)。自定义图标需要 iOS 15 或以上；首次下载超过 10 秒时，Bark 会回退到默认图标。
 
-未配置时自动跳过 Bark。配置后，无论签到成功还是失败都会发送结果摘要；
+未配置时自动跳过 Bark。配置后，通知标题仅显示 `SakuraFrp`，正文为 `签到成功`
+或 `签到失败 · 点击查看日志`，不重复显示时间与状态；
 点击通知可打开本次 Actions 运行页面。推送不包含账号、密钥、模型响应或完整日志。
 网络异常和限流最多尝试 3 次；网络超时重试可能产生重复通知。
 
