@@ -90,11 +90,7 @@ class CaptchaHandler:
     def _recognize_captcha(self, img_url: str, imagebase64: bool = False) -> Optional[Dict]:
         """使用视觉模型识别验证码，支持 imagebase64 方式"""
         try:
-            prompt = (
-                '这是一个九宫格验证码，请按从左到右、从上到下的顺序识别每个格子里的物品名称，'
-                '最后识别左下角的参考图。输出格式为JSON：{"1":"名称", "2":"名称", ..., "10":"参考图名称"}。'
-                '名称要简洁，参考图名称必须是九宫格里已有的名称。若有类似物品（如气球与热气球），请统一名称。'
-            )
+            prompt = self.config.ai_prompt
             image_url_value = img_url
             if imagebase64:
                 import requests, base64

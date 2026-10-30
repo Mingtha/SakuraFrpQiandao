@@ -1,6 +1,5 @@
 """通过 Bark 推送签到结果，仅使用 Python 标准库。"""
 
-from datetime import datetime
 import json
 import os
 from pathlib import Path
@@ -9,7 +8,6 @@ import time
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlsplit
 from urllib.request import Request, urlopen
-from zoneinfo import ZoneInfo
 
 
 def checkin_succeeded(result_file="checkin_result.json"):
@@ -43,11 +41,9 @@ def send_bark(result_file="checkin_result.json"):
 
     success = checkin_succeeded(result_file)
     status = "成功" if success else "失败"
-    now = datetime.now(ZoneInfo("Asia/Shanghai")).strftime("%Y-%m-%d %H:%M:%S")
     payload = {
-        "title": f"SakuraFrp 签到{status}",
-        "body": f"签到结果：{status}\n时间：{now}（北京时间）\n"
-                + ("已确认今日签到完成。" if success else "签到未完成，请查看运行日志。"),
+        "title": "SakuraFrp",
+        "body": f"签到{status}" + ("" if success else " · 点击查看日志"),
         "group": "SakuraFrp",
         "icon": os.getenv("BARK_ICON", "").strip() or
                 "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f338.png",
