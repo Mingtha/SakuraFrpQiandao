@@ -49,6 +49,8 @@ def send_bark(result_file="checkin_result.json"):
         "body": f"签到结果：{status}\n时间：{now}（北京时间）\n"
                 + ("已确认今日签到完成。" if success else "签到未完成，请查看运行日志。"),
         "group": "SakuraFrp",
+        "icon": os.getenv("BARK_ICON", "").strip() or
+                "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f338.png",
     }
     # 只推送结果摘要，避免将账户、模型响应、密钥或完整日志发到推送服务。
     repository = os.getenv("GITHUB_REPOSITORY", "")

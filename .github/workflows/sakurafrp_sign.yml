@@ -46,6 +46,7 @@ jobs:
         if: always()
         env:
           BARK_URL: ${{ secrets.BARK_URL }}
+          BARK_ICON: ${{ secrets.BARK_ICON }}
           CHECKIN_OUTCOME: ${{ steps.checkin.outcome }}
         run: python send_bark.py
       

@@ -66,6 +66,15 @@ class BarkTests(unittest.TestCase):
         self.assertIn("北京时间", payload["body"])
         self.assertEqual(payload["url"], "https://github.com/example/checkin/actions/runs/123")
         self.assertNotIn("device_key", payload)
+        self.assertTrue(payload["icon"].endswith("/1f338.png"))
+
+    def test_custom_icon(self):
+        os.environ.update({"BARK_URL": "https://api.day.app/test-device",
+                           "BARK_ICON": "https://example.com/my-icon.png"})
+        with patch("send_bark.urlopen", return_value=self.response()) as request:
+            self.assertTrue(send_bark.send_bark(self.result))
+        self.assertEqual(json.loads(request.call_args.args[0].data)["icon"],
+                         "https://example.com/my-icon.png")
 
     def test_missing_result_sends_failure(self):
         os.environ["BARK_URL"] = "https://api.day.app/test-device"

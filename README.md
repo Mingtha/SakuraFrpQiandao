@@ -98,9 +98,12 @@ Actions 使用 GitHub runner 自带 Chrome，并执行 `python -m playwright ins
 | 名称 | 说明 |
 | --- | --- |
 | `BARK_URL` | 包含设备 Key 的推送地址，例如 `https://api.day.app/你的设备Key`；支持自建服务器及路径前缀 |
+| `BARK_ICON` | 可选，自定义通知图标的图片 URL；留空默认使用粉色樱花图标（Twemoji，CC-BY 4.0） |
 
 地址只填到设备 Key，不附加通知标题、正文或查询参数。更换服务器时只需修改这个 Secret。
 请不要将真实推送地址提交到代码、README 或日志中。
+
+默认樱花图标由 [Twemoji](https://github.com/twitter/twemoji) 提供，图片许可为 [CC-BY 4.0](https://creativecommons.org/licenses/by/4.0/)。自定义图标需要 iOS 15 或以上；首次下载超过 10 秒时，Bark 会回退到默认图标。
 
 未配置时自动跳过 Bark。配置后，无论签到成功还是失败都会发送结果摘要；
 点击通知可打开本次 Actions 运行页面。推送不包含账号、密钥、模型响应或完整日志。
