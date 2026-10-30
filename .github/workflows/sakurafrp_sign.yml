@@ -29,6 +29,7 @@ jobs:
           python -m playwright install-deps chromium
       
       - name: 运行签到脚本
+        id: checkin
         env:
           SAKURAFRP_USER: ${{ secrets.SAKURAFRP_USER }}
           SAKURAFRP_PASS: ${{ secrets.SAKURAFRP_PASS }}
@@ -40,6 +41,13 @@ jobs:
           HEADLESS: 'true'
         run: |
           python main.py
+
+      - name: 发送 Bark 通知
+        if: always()
+        env:
+          BARK_URL: ${{ secrets.BARK_URL }}
+          CHECKIN_OUTCOME: ${{ steps.checkin.outcome }}
+        run: python send_bark.py
       
       - name: 发送邮件通知
         if: always()

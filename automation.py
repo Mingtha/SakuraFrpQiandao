@@ -28,7 +28,7 @@ class CheckInAutomation:
         self.simulator = HumanSimulator()
         self.max_retries = config.max_retries
     
-    def run(self):
+    def run(self) -> bool:
         """执行签到流程"""
         # GitHub Actions 环境自动使用 headless 模式
         headless = os.getenv('CI') == 'true' or os.getenv('HEADLESS', 'false').lower() == 'true'
@@ -73,12 +73,12 @@ class CheckInAutomation:
                 # 步骤1: 登录
                 if not self._login(page):
                     logger.error("登录失败")
-                    return
+                    return False
 
                 # 步骤2: 跳转到 处理年龄
                 if not self._navigate_to_sakurafrp(page):
                     logger.error("跳转到 SakuraFrp 失败")
-                    return
+                    return False
 
                 # 步骤3: 执行签到
                 if not self._perform_checkin(page):
@@ -86,15 +86,17 @@ class CheckInAutomation:
                     page.screenshot(path="error_screenshot.png", full_page=True)
                     with open("error_page_source.html", "w", encoding="utf-8") as f:
                         f.write(page.content())
-                    return
+                    return False
 
                 logger.info("✓ 签到流程完成")
+                return True
 
             except ModelApiError:
                 logger.error("模型 API 调用失败，终止签到流程")
-                return
+                return False
             except Exception as e:
                 logger.error(f"执行过程中发生错误: {e}", exc_info=True)
+                return False
             finally:
                 if browser and headless:
                     browser.close()

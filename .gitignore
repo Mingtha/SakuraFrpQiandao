@@ -11,3 +11,4 @@ __pycache__/
 node_modules/
 .venv
 test/
+checkin_result.json

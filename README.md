@@ -9,7 +9,7 @@
 - 自动点击匹配的验证码格子
 - 失败自动重试，默认最多 10 次
 - 支持 GitHub Actions 定时执行
-- 支持邮件通知和日志归档
+- 支持 Bark、邮件通知和日志归档
 
 ## 本地运行
 
@@ -91,6 +91,29 @@ python main.py
 
 Actions 使用 GitHub runner 自带 Chrome，并执行 `python -m playwright install-deps chromium` 安装 Linux 运行依赖，避免每次下载 Playwright Chromium 大包。
 
+### Bark 通知（可选）
+
+在仓库 `Settings → Secrets and variables → Actions → New repository secret` 中添加：
+
+| 名称 | 说明 |
+| --- | --- |
+| `BARK_URL` | 包含设备 Key 的推送地址，例如 `https://api.day.app/你的设备Key`；支持自建服务器及路径前缀 |
+
+地址只填到设备 Key，不附加通知标题、正文或查询参数。更换服务器时只需修改这个 Secret。
+请不要将真实推送地址提交到代码、README 或日志中。
+
+未配置时自动跳过 Bark。配置后，无论签到成功还是失败都会发送结果摘要；
+点击通知可打开本次 Actions 运行页面。推送不包含账号、密钥、模型响应或完整日志。
+网络异常和限流最多尝试 3 次；网络超时重试可能产生重复通知。
+
+签到结果写入 `checkin_result.json`，失败时进程返回非零退出码。
+Bark 根据结果文件及 Actions 步骤状态判定结果，不将“通过验证码”单独视为签到成功。
+如果依赖安装失败、签到步骤被跳过或结果缺失，会推送失败。
+若 runner 未启动、检出代码失败或任务被强制终止，则无法保证通知送达。
+
+本地运行时设置 `BARK_URL` 环境变量，然后依次运行 `python main.py` 和
+`python send_bark.py`。通知读取当前目录中的结果文件，请在每次签到执行后发送，避免使用旧结果。
+
 ## 项目结构
 
 ```text
@@ -102,6 +125,7 @@ SakuraFrp-Qiandao/
 ├── human_simulator.py     # 简单人类操作模拟
 ├── main.py                # 程序入口
 ├── send_email.py          # 邮件通知
+├── send_bark.py           # Bark 结果通知
 ├── requirements.txt       # Python 依赖
 └── README.md
 ```
