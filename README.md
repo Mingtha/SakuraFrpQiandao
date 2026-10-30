@@ -69,7 +69,7 @@ python main.py
 
 ## GitHub Actions 部署
 
-工作流文件位于 `.github/workflows/sakurafrp_sign.yml`，默认每天北京时间 9:00 执行，也支持手动触发。
+工作流文件位于 `.github/workflows/sakurafrp_sign.yml`，默认每天北京时间 7:00 执行，也支持手动触发。
 
 需要配置以下 Secrets：
 
@@ -156,10 +156,11 @@ SakuraFrp-Qiandao/
 
 ```yaml
 schedule:
-  - cron: '0 1 * * *'  # UTC 1:00 = 北京时间 9:00
+  - cron: '0 23 * * *'  # UTC 前一天 23:00 = 北京时间次日 7:00
 ```
 
 常用时间对照：
+- `0 23 * * *` - 每天 7:00（北京时间，当前默认）
 - `0 1 * * *` - 每天 9:00（北京时间）
 - `0 13 * * *` - 每天 21:00（北京时间）
 - `0 1,13 * * *` - 每天 9:00 和 21:00
