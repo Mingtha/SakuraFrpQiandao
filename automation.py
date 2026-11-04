@@ -226,52 +226,59 @@ class CheckInAutomation:
                 if time.monotonic() >= deadline:
                     raise
 
+    def _wait_for_checkin_state(self, page: Page, timeout=20000):
+        """同时检查成功标识和签到按钮，避免串行等待按钮超时。"""
+        deadline = time.monotonic() + timeout / 1000
+        while True:
+            if page.get_by_text("今天已经签到过啦", exact=False).first.is_visible():
+                return "done"
+            if page.get_by_role("button", name="点击这里签到", exact=True).is_visible():
+                return "ready"
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                raise PlaywrightTimeoutError("未找到签到按钮或已签到标识")
+            page.wait_for_timeout(min(200, remaining * 1000))
+
     def _perform_checkin(self, page: Page) -> bool:
+        """只对实际验证码处理计数，并在最后一次尝试后检查结果。"""
+        attempts = 0
+        try:
+            while True:
+                if self._wait_for_checkin_state(page) == "done":
+                    logger.info("今日已签到")
+                    return True
+                if attempts >= self.max_retries:
+                    logger.error("已达到最大验证码尝试次数，仍未确认签到成功")
+                    return False
 
-        """执行签到操作"""
-        for attempt in range(1, self.max_retries+1):
-            logger.info(f"验证码尝试 {attempt}/{self.max_retries}")
-            try:
-                # 查找签到按钮
-                check_in_button = None
+                button = page.get_by_role("button", name="点击这里签到", exact=True)
+                logger.info("点击签到按钮...")
+                self._click_checkin(page, button)
+                self.simulator.random_sleep(2, 4)
+
+                attempts += 1
+                logger.info(f"验证码尝试 {attempts}/{self.max_retries}")
+                self.captcha_handler.handle_geetest_captcha(page)
+
+                # 提交后先等待成功标识；仍未确认时才刷新检查服务端状态。
+                # 不以签到按钮还在页面上或验证码已关闭作为成功依据。
                 try:
-                    check_in_button = page.locator("button", has_text="点击这里签到")
-                    check_in_button.wait_for(state="visible")
-                    logger.info("找到签到按钮")
+                    page.get_by_text("今天已经签到过啦", exact=False).first.wait_for(
+                        state="visible", timeout=20000,
+                    )
+                    logger.info(f"签到成功，共尝试 {attempts} 次验证码")
+                    return True
                 except PlaywrightTimeoutError:
-                    # 检查是否已签到
-                    try:
-                        page.locator("p", has_text="今天已经签到过啦").wait_for(
-                            state="visible",
-                            timeout=2000,
-                        )
-                        logger.info("今日已签到")
-                        return True
-                    except PlaywrightTimeoutError:
-                        logger.error("未找到签到按钮或已签到标识")
-                        return False
-
-                # 点击签到按钮
-                if check_in_button:
-                    logger.info("点击签到按钮...")
-                    self._click_checkin(page, check_in_button)
-                    self.simulator.random_sleep(2, 4)
-
-                    # 处理验证码
-                    self.captcha_handler.handle_geetest_captcha(page)
+                    logger.info("暂未检测到签到成功标识，刷新页面确认结果")
                     page.reload(wait_until="domcontentloaded")
-                    time.sleep(5)
-                    continue
+                    self._dismiss_age_confirmation(page)
 
-                return False
+        except ModelApiError:
+            raise
+        except PlaywrightError as e:
+            logger.error(f"签到过程出错: {e}", exc_info=True)
+            return False
+        except Exception as e:
+            logger.error(f"签到过程出错: {e}", exc_info=True)
+            return False
 
-            except ModelApiError:
-                raise
-            except PlaywrightError as e:
-                logger.error(f"签到过程出错: {e}", exc_info=True)
-                return False
-            except Exception as e:
-                logger.error(f"签到过程出错: {e}", exc_info=True)
-                return False
-        logger.info("已达到最大重试次数")
-        return False
