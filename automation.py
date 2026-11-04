@@ -167,7 +167,8 @@ class CheckInAutomation:
             logger.info("点击登录按钮...")
             login_button.click()
 
-            self.simulator.random_sleep(3, 5)
+            page.wait_for_url("https://www.natfrp.com/user/**", timeout=60000)
+            self._wait_for_dashboard(page)
             logger.info("登录成功")
             return True
 
@@ -178,34 +179,52 @@ class CheckInAutomation:
             logger.error(f"登录过程出错: {e}", exc_info=True)
             return False
 
+    def _wait_for_dashboard(self, page: Page):
+        """等待真实业务元素，避免把登录后的固定延时当成登录成功。"""
+        page.locator(".adult-check").or_(
+            page.get_by_role("button", name="点击这里签到", exact=True)
+        ).or_(page.get_by_text("今天已经签到过啦", exact=False)).first.wait_for(
+            state="visible", timeout=60000,
+        )
+
+    def _dismiss_age_confirmation(self, page: Page):
+        """保留原有年龄确认行为，并确认遮挡层确实消失。"""
+        overlay = page.locator(".adult-check")
+        if not overlay.is_visible():
+            return
+        logger.info("处理年龄确认弹窗...")
+        # 此链接没有 href，不能依赖 ARIA link 角色。
+        overlay.locator("a").filter(has_text="是，我已满18岁").click(timeout=10000)
+        overlay.wait_for(state="hidden", timeout=15000)
+        logger.info("年龄确认弹窗已关闭")
+
     def _navigate_to_sakurafrp(self, page: Page) -> bool:
-        """跳转到 SakuraFrp 仪表板"""
+        """等待仪表板加载并处理年龄确认。失败时不再误报成功。"""
         try:
-            # 点击 SakuraFrp 链接
-            # sakura_link = page.locator("div.action-list a", has_text="Sakura Frp")
-            # logger.info("点击 SakuraFrp 跳转链接...")
-            # sakura_link.click()
-            # self.simulator.random_sleep(2, 4)
-
-            # 处理年龄确认弹窗（如果存在）
-            try:
-                age_confirm = page.locator("div.yes a", has_text="是，我已满18岁")
-                age_confirm.wait_for(state="visible", timeout=5000)
-                logger.info("处理年龄确认弹窗...")
-                age_confirm.click()
-                self.simulator.random_sleep(2, 3)
-            except PlaywrightTimeoutError:
-                logger.info("未检测到年龄确认弹窗")
-
-            logger.info("成功跳转到 SakuraFrp 仪表板")
+            self._wait_for_dashboard(page)
+            self._dismiss_age_confirmation(page)
+            logger.info("SakuraFrp 仪表板已就绪")
             return True
-
-        except PlaywrightTimeoutError:
-            logger.warning("SakuraFrp 跳转链接未找到，可能已在目标页面")
-            return True
-        except Exception as e:
-            logger.error(f"跳转过程出错: {e}", exc_info=True)
+        except PlaywrightError as e:
+            logger.error(f"仪表板或年龄确认处理失败: {e}")
             return False
+
+    def _click_checkin(self, page: Page, button):
+        """只在点击阶段重试，处理检查后才出现的年龄层。"""
+        deadline = time.monotonic() + 30
+        while True:
+            self._dismiss_age_confirmation(page)
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                raise PlaywrightTimeoutError("签到按钮在 30 秒内未能完成点击")
+            try:
+                button.click(timeout=min(3000, max(1, int(remaining * 1000))))
+                return
+            except PlaywrightTimeoutError:
+                # Playwright 自动等待元素可操作；重新检查延迟出现的年龄层。
+                # 不使用强制点击或移除 DOM，其他遮挡最终仍会明确失败。
+                if time.monotonic() >= deadline:
+                    raise
 
     def _perform_checkin(self, page: Page) -> bool:
 
@@ -235,7 +254,7 @@ class CheckInAutomation:
                 # 点击签到按钮
                 if check_in_button:
                     logger.info("点击签到按钮...")
-                    check_in_button.click()
+                    self._click_checkin(page, check_in_button)
                     self.simulator.random_sleep(2, 4)
 
                     # 处理验证码
