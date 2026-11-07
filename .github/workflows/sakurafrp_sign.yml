@@ -8,9 +8,17 @@ on:
   # 允许手动触发
   workflow_dispatch:
   
+permissions:
+  contents: read
+
+concurrency:
+  group: sakurafrp-checkin
+  cancel-in-progress: false
+
 jobs:
   checkin:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     
     steps:
       - name: 检出代码
@@ -59,6 +67,7 @@ jobs:
           EMAIL_USERNAME: ${{ secrets.EMAIL_USERNAME }}
           EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
           RECEIVER_EMAIL: ${{ secrets.RECEIVER_EMAIL || secrets.EMAIL_USERNAME }}
+          CHECKIN_OUTCOME: ${{ steps.checkin.outcome }}
         run: |
           python send_email.py
       
@@ -67,5 +76,8 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: checkin-logs
-          path: checkin.log
+          path: |
+            checkin.log
+            checkin_result.json
           retention-days: 7
+

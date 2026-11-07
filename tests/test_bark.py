@@ -128,6 +128,7 @@ class MainResultTests(unittest.TestCase):
             automation_module.CheckInAutomation.return_value.run.return_value = value
             with patch.object(module.Path, "write_text") as write:
                 self.assertEqual(module.main(), 0 if value is True else 1)
+                self.assertFalse(json.loads(write.call_args_list[0].args[0])["success"])
                 self.assertIs(json.loads(write.call_args.args[0])["success"], value is True)
         automation_module.CheckInAutomation.return_value.run.side_effect = RuntimeError("browser failed")
         with patch.object(module.Path, "write_text") as write:
@@ -137,3 +138,4 @@ class MainResultTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+

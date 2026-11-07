@@ -11,6 +11,10 @@ logger = logging.getLogger(__name__)
 def main():
     """主函数"""
     success = False
+    # 在读取配置或启动浏览器前清除上次结果，进程中断也不会留下旧的成功。
+    Path("checkin_result.json").write_text(
+        json.dumps({"success": False}), encoding="utf-8"
+    )
     try:
         # 加载配置
         config = Config.from_env()
@@ -33,3 +37,4 @@ def main():
 
 if __name__ == "__main__":
     sys.exit(main())
+

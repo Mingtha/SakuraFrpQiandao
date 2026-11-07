@@ -16,15 +16,9 @@ class CheckInAutomation:
     """签到自动化主类"""
     def __init__(self, config: Config):
         self.config = config
-        try:
-            from captcha_handler import CaptchaHandler
-        except ImportError:
-            from captcha_handler import CaptchaHandler  # 如果模块名不同
+        from captcha_handler import CaptchaHandler
         self.captcha_handler = CaptchaHandler(config)
-        try:
-            from human_simulator import HumanSimulator
-        except ImportError:
-            from human_simulator import HumanSimulator  # 如果模块名不同
+        from human_simulator import HumanSimulator
         self.simulator = HumanSimulator()
         self.max_retries = config.max_retries
     
@@ -98,8 +92,11 @@ class CheckInAutomation:
                 logger.error(f"执行过程中发生错误: {e}", exc_info=True)
                 return False
             finally:
-                if browser and headless:
-                    browser.close()
+                if browser:
+                    try:
+                        browser.close()
+                    except PlaywrightError:
+                        logger.warning("关闭浏览器失败")
                 logger.info("脚本执行完毕")
 
     def _resolve_chrome_path(self):
@@ -181,11 +178,19 @@ class CheckInAutomation:
 
     def _wait_for_dashboard(self, page: Page):
         """等待真实业务元素，避免把登录后的固定延时当成登录成功。"""
-        page.locator(".adult-check").or_(
-            page.get_by_role("button", name="点击这里签到", exact=True)
-        ).or_(page.get_by_text("今天已经签到过啦", exact=False)).first.wait_for(
-            state="visible", timeout=60000,
+        candidates = (
+            page.locator(".adult-check"),
+            page.get_by_role("button", name="点击这里签到", exact=True),
+            page.get_by_text("今天已经签到过啦", exact=False).first,
         )
+        deadline = time.monotonic() + 60
+        while True:
+            if any(candidate.is_visible() for candidate in candidates):
+                return
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                raise PlaywrightTimeoutError("等待 SakuraFrp 仪表板超时")
+            page.wait_for_timeout(min(200, remaining * 1000))
 
     def _dismiss_age_confirmation(self, page: Page):
         """保留原有年龄确认行为，并确认遮挡层确实消失。"""
@@ -281,4 +286,5 @@ class CheckInAutomation:
         except Exception as e:
             logger.error(f"签到过程出错: {e}", exc_info=True)
             return False
+
 
