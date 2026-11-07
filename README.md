@@ -69,7 +69,7 @@ python main.py
 
 ## GitHub Actions 部署
 
-工作流文件位于 `.github/workflows/sakurafrp_sign.yml`，默认每天北京时间 7:00 执行，也支持手动触发。
+工作流文件位于 `.github/workflows/sakurafrp_sign.yml`，默认每天北京时间 7:07 执行，也支持手动触发。同一仓库的签到任务串行执行，单次任务最多运行 30 分钟。
 
 需要配置以下 Secrets：
 
@@ -124,7 +124,7 @@ Actions 使用 GitHub runner 自带 Chrome，并执行 `python -m playwright ins
 点击通知可打开本次 Actions 运行页面。推送不包含账号、密钥、模型响应或完整日志。
 网络异常和限流最多尝试 3 次；网络超时重试可能产生重复通知。
 
-签到结果写入 `checkin_result.json`，失败时进程返回非零退出码。
+签到结果写入 `checkin_result.json`，失败时进程返回非零退出码。每次启动会先将结果重置为失败，Bark 和邮件均读取本次结构化结果及 Actions 步骤状态，避免从旧日志误判成功。
 Bark 根据结果文件及 Actions 步骤状态判定结果，不将“通过验证码”单独视为签到成功。
 如果依赖安装失败、签到步骤被跳过或结果缺失，会推送失败。
 若 runner 未启动、检出代码失败或任务被强制终止，则无法保证通知送达。
@@ -160,7 +160,8 @@ schedule:
 ```
 
 常用时间对照：
-- `0 23 * * *` - 每天 7:00（北京时间，当前默认）
+- `7 23 * * *` - 每天 7:07（北京时间，当前默认）
+- `0 23 * * *` - 每天 7:00（北京时间）
 - `0 1 * * *` - 每天 9:00（北京时间）
 - `0 13 * * *` - 每天 21:00（北京时间）
 - `0 1,13 * * *` - 每天 9:00 和 21:00
@@ -176,6 +177,17 @@ schedule:
 - 可以使用智谱官网的免费视觉模型`GLM-4.6V-Flash`，但有时候高峰期会429，推荐使用`GLM-4.1V-Thinking-Flash`,效果差不多。
 
 ## 故障排查
+
+### 等待与测试
+
+验证码处理后最多等待 20 秒，检测到“今天已经签到过啦”便立即结束；未检测到时刷新页面再次确认，最后一次尝试也会检查结果。
+尝试计数只在实际调用验证码处理时增加，不把结果检查算作新尝试。
+
+已有环境变量优先于本地 `.env`；`MAX_RETRIES` 必须为正整数，布尔值拼写错误会在启动时提示。
+模型 API 单次请求超时为 60 秒，SDK 最多重试 2 次；图片下载连接/读取超时分别为 10/30 秒；邮件连接超时为 15 秒。
+
+安装依赖后执行 `python -m unittest discover -s tests -v`。PR 和 main 分支推送会自动运行单元测试。
+测试使用模拟网络和页面状态，不会登录真实账户、发送通知或消耗模型额度；真实签到和多架构 Docker 构建仍需单独验证。
 
 ### 验证码识别失败
 
@@ -212,3 +224,4 @@ HEADLESS=false
 - [GitHub Actions 文档](https://docs.github.com/en/actions)
 - [copilot-api](https://github.com/caozhiyuan/copilot-api)
 - [LiteLLM](https://github.com/BerriAI/litellm)
+

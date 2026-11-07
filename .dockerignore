@@ -1,0 +1,11 @@
+.git
+.env
+.env.*
+!.env.example
+.venv
+__pycache__
+*.pyc
+*.log
+checkin_result.json
+error_screenshot.png
+error_page_source.html

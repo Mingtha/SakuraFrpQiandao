@@ -1,5 +1,8 @@
 import smtplib
 import os
+import ssl
+import sys
+from send_bark import checkin_succeeded
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from email.mime.base import MIMEBase
@@ -16,17 +19,19 @@ def send_log_email(log_file='checkin.log'):
     """
     # 从环境变量读取配置
     smtp_server = os.getenv('SMTP_SERVER', 'smtp.gmail.com')
-    smtp_port = int(os.getenv('SMTP_PORT', '587'))
     sender_email = os.getenv('EMAIL_USERNAME', '')
     sender_password = os.getenv('EMAIL_PASSWORD', '')
-    receiver_email = os.getenv('RECEIVER_EMAIL', sender_email)
+    receiver_email = os.getenv('RECEIVER_EMAIL', '').strip() or sender_email
     
     # 检查配置
     if not sender_email or not sender_password:
         print("❌ 邮件配置未设置，跳过发送")
-        return False
+        return True
     
     try:
+        smtp_port = int(os.getenv('SMTP_PORT', '587'))
+        if not 1 <= smtp_port <= 65535:
+            raise ValueError("SMTP_PORT 超出范围")
         # 读取日志内容
         log_content = ""
         if os.path.exists(log_file):
@@ -36,7 +41,7 @@ def send_log_email(log_file='checkin.log'):
             log_content = "日志文件不存在"
         
         # 判断签到是否成功（根据日志内容）
-        is_success = "签到流程完成" in log_content or "验证码验证成功" in log_content
+        is_success = checkin_succeeded()
         status_emoji = "✅" if is_success else "❌"
         status_text = "成功" if is_success else "失败"
         
@@ -75,22 +80,25 @@ SakuraFrp 自动签到报告
             msg.attach(part)
         
         if smtp_port == 465:
-            server = smtplib.SMTP_SSL(smtp_server, smtp_port)
+            server = smtplib.SMTP_SSL(smtp_server, smtp_port, timeout=15,
+                                      context=ssl.create_default_context())
         else:
-            server = smtplib.SMTP(smtp_server, smtp_port)
-            server.starttls()
+            server = smtplib.SMTP(smtp_server, smtp_port, timeout=15)
         
         with server:
+            if smtp_port != 465:
+                server.starttls(context=ssl.create_default_context())
             server.login(sender_email, sender_password)
             server.send_message(msg)
         
         print(f"✅ 邮件发送成功: {receiver_email}")
         return True
 
-    except Exception as e:
-        print(f"❌ 邮件发送失败: {e}")
+    except Exception:
+        print("❌ 邮件发送失败，请检查 SMTP 配置或网络")
         return False
 
 
 if __name__ == "__main__":
-    send_log_email()
+    sys.exit(0 if send_log_email() else 1)
+

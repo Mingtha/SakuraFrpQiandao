@@ -24,7 +24,9 @@ class CaptchaHandler:
         self.config = config
         self.client = OpenAI(
             base_url=config.base_url,
-            api_key=config.api_key
+            api_key=config.api_key,
+            timeout=60.0,
+            max_retries=2,
         )
 
     def get_img(self, page: Page):
@@ -95,7 +97,7 @@ class CaptchaHandler:
             if imagebase64:
                 import requests, base64
                 try:
-                    resp = requests.get(img_url)
+                    resp = requests.get(img_url, timeout=(10, 30))
                     resp.raise_for_status()
                     img_bytes = resp.content
                     img_b64 = base64.b64encode(img_bytes).decode('utf-8')
@@ -292,3 +294,4 @@ class CaptchaHandler:
         except Exception as e:
             logger.error(f"刷新验证码失败: {e}")
             return False
+

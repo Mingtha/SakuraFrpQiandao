@@ -1,12 +1,12 @@
 import logging
 import os
 from typing import Optional
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 # 尝试加载 .env 文件
 try:
     from dotenv import load_dotenv
-    load_dotenv(override=True)
+    load_dotenv(override=False)
 except ImportError:
     pass
 
@@ -26,9 +26,9 @@ logger = logging.getLogger(__name__)
 class Config:
     """配置数据类"""
     sakurafrp_user: str
-    sakurafrp_pass: str
+    sakurafrp_pass: str = field(repr=False)
     base_url: str
-    api_key: str
+    api_key: str = field(repr=False)
     model: str
     ai_prompt: str
     chrome_binary_path: Optional[str] = None
@@ -49,7 +49,16 @@ class Config:
             raw_value = os.environ.get(key, "").strip().lower()
             if not raw_value:
                 return default
+            if raw_value not in {"1", "true", "yes", "on", "0", "false", "no", "off"}:
+                raise ValueError(f"环境变量 {key} 必须是有效布尔值")
             return raw_value in {"1", "true", "yes", "on"}
+
+        try:
+            max_retries = int(get_env("MAX_RETRIES", required=False) or 10)
+        except ValueError:
+            raise ValueError("MAX_RETRIES 必须是正整数") from None
+        if max_retries < 1:
+            raise ValueError("MAX_RETRIES 必须是正整数")
         
         return cls(
             sakurafrp_user=get_env("SAKURAFRP_USER"),
@@ -59,6 +68,7 @@ class Config:
             model=get_env("MODEL"),
             ai_prompt=get_env("AI_PROMPT", multiline=True),
             chrome_binary_path=get_env("CHROME_BINARY_PATH", required=False),
-            max_retries=int(get_env("MAX_RETRIES", required=False) or 10),
+            max_retries=max_retries,
             image_as_base64=get_bool_env("IMAGE_AS_BASE64", default=False)
         )
+
